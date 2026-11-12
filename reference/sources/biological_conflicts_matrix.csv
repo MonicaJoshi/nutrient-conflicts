@@ -1,0 +1,24 @@
+# Reviewed transcription of the BiologicalConflicts-Matrix-AvsB image.
+#
+# This file is the input of record for reference-data-2. The program does not OCR
+# the PNG; it validates this transcription against the image fingerprint below and
+# then persists the human-readable result (BiologicalConflicts-Matrix.csv / .md).
+#
+# If the image is replaced on purpose, review it, update the rows here, then run:
+#   python -m nutri_eval.cli reference build --source biological --accept-source-change
+#
+# Cells may list several nutrients separated by "/" or ","; the program expands
+# them into one interaction per nutrient pair, exactly as the image states.
+#
+# image.file=BiologicalConflicts-Matrix-AvsB.png
+# image.bytes=94753
+# image.width=781
+# image.height=575
+# image.sha256=4a4eeb5b66fccd28f90f7ab729ecb861a01332a820cfc875a82482a393a63938
+# image.rows=5
+row,nutrient_a_cell,nutrient_b_cell,conflict_type,mechanism
+1,Calcium,Iron,Antagonistic (Negative),Compete for the same divalent metal transporters in the gut; calcium temporarily inhibits iron absorption.
+2,Zinc,Copper,Antagonistic (Negative),"High zinc stimulates metallothionein, a protein that traps copper in intestinal cells, preventing its uptake."
+3,Vitamin C,Iron,Synergistic (Positive),Vitamin C acts as a reducing agent; it converts ferric iron to ferrous iron, which is significantly easier to absorb.
+4,Vitamin A,Vitamin K,Antagonistic (Negative),High doses of Vitamin A can interfere with the absorption and absorption pathways of fat-soluble Vitamin K.
+5,Phytates / Oxalates,Calcium / Zinc / Iron,Antagonistic (Negative),"Plant compounds act as ""anti-nutrients"", binding tightly to these minerals to form insoluble precipitates that cannot be absorbed."

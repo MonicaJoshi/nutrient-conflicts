@@ -1,0 +1,33 @@
+AGENTS.md and SKILL.md applied in this project:
+
+1 
+	Generic opencode AGENTS.md with instructions on ReadMe.md, properties file, and ask clarifying questions stmt.
+	path: C:\Users\<user name>\.config\opencode\AGENTS.md
+
+	content:
+		---start---
+		Implement code in Python, GUI, CLI as instructed in project AGENTS.md or SKILL.md.
+
+		Near the top of each code file, insert a comment that contains this
+		text: " .config/opencode/AGENTS.md APPLIED".
+
+		Help/usage of the program must be written to readme.md file. do not override the NOTE section on top if exist, append the content below it. 
+		variable values like file paths, server name, ports, timeout, time window etc. must be taken from application.properties. For tests these values can be defaulted in the properties file.
+		if mocking is used of any kind - like remote server env , docker, security related or so, indicate in readme. and associated variables in properties file.
+
+		any env pre prequisite must be indicated in readme.md.
+
+		Ask clarifying questions, or when you see an error or if I have misunderstood anything or have a better suggestion.
+		---end---
+		
+
+2 
+	Generic SKILL.md with instructions on py coding style, CLI , GUI and API implementation preferences.
+	path: <path>\.agents\skills\python-development\SKILL.md
+	
+
+3
+	Project AGENTS.md with preferences on caching.
+	path: <path>\nutrient-conflicts\AGENTS.md
+	
+	

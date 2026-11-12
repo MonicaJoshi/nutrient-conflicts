@@ -1,0 +1,41 @@
+# .config/opencode/AGENTS.md APPLIED
+# NutrientConflictsEvaluation Project AGENTS.md APPLIED
+# PYTHON SKILL APPLIED
+
+[project]
+name = "nutrient-conflicts"
+version = "1.0.0"
+description = "Identify synergistic and antagonistic nutrients in branded foods from USDA FoodData Central"
+readme = "README.md"
+requires-python = ">=3.11"
+dependencies = [
+    "click>=8.1",
+    "fastapi>=0.110",
+    "uvicorn>=0.27",
+    "pydantic>=2.5",
+    "httpx>=0.27",
+    "pypdf>=4.0",
+    "pillow>=10.0",
+]
+
+[project.optional-dependencies]
+test = ["coverage>=7.0"]
+
+[project.scripts]
+nutrient-conflicts = "nutrient_conflicts.cli:main"
+
+[tool.coverage.run]
+source = ["nutrient_conflicts"]
+omit = ["nutrient_conflicts/gui_launcher.py"]
+
+[tool.coverage.report]
+fail_under = 80
+show_missing = true
+exclude_lines = ["if __name__ == .__main__.:", "raise NotImplementedError", "pragma: no cover"]
+
+[build-system]
+requires = ["setuptools>=68"]
+build-backend = "setuptools.build_meta"
+
+[tool.setuptools.packages.find]
+include = ["nutrient_conflicts*"]

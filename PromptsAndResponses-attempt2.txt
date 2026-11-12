@@ -1,0 +1,514 @@
+Here is how agent responded, Used OpenCode go DeepSeek V4.1 Flash 1017
+
+Plan mode:
+Prompt-1: 
+
+	I want identify what constituent nutrients in a given food item brand are Synergistic or Antagonistic as impact on human body after intake. Nutrient not in these two categories are assumed neutral.  Input data consist of a pre-downloaded FDC published data and reference data based on research on Synergistic and Antagonistic nutrient combinations.
+		
+	GUI, CLI and API - all 3 interfaces must be implemented.
+
+
+	here is the reference data information:
+
+	reference-data-1: folder path contains the Vitamin-Mineral Interactions reference 
+	<local path>\projects\ds\nutrient-conflicts\referenceData\MET2557-Vitamin-Mineral-Interactions-Chart_IPAD.pdf, read the pdf and and persist data in py readable format for later reference.
+
+	reference-data-2: folder path contains an image at <local path>\projects\ds\nutrient-conflicts\referenceData\BiologicalConflicts-Matrix-AvsB,  read the image and persist data in py readable format for later reference. 
+	
+	
+	===agent response ===
+	I'll explore the workspace and the reference data before proposing a plan.
+	...
+	I explored the workspace and the reference data. Key findings:
+		- The project repo is essentially empty (only README.md, AGENTS.md, .gitignore).
+		- FDC data lives outside the repo at C:\...\projects\ds\nutrient-conflicts\brandData\... — full FoodData_Central_csv_2026-10-29 (branded_food.csv 960 MB, food_nutrient.csv 1.5 GB) plus a partially extracted branded-only zip. branded_food.csv has brand_owner, brand_name, gtin_upc, ingredients, serving_size, branded_food_category.
+		- Reference data also lives outside the repo. The PDF is machine-readable: 4 columns (Nutrient / Synergistic / Varies / Antagonistic) with stable x-coordinates and ~22.5 pt row pitch, so it can be parsed deterministically rather than OCR'd. The image is a 5-row table (Calcium/Iron, Zinc/Copper, Vitamin C/Iron, Vitamin A/Vitamin K, Phytates-Oxalates/Calcium-Zinc-Iron).
+		- The referenceData folder already contains curated CSVs from earlier work (nutrient_interactions.csv 58 pairs, nutrient_aliases.csv FDC nutrient IDs, nutrient_name_map.csv, dv_reference.csv, ingredient_nutrient_map.csv). No code exists that generates them.
+		- Installed: pandas, fastapi, uvicorn, streamlit, pypdf, pdfminer.six, pytest. Not installed: pdfplumber, pytesseract.
+		A few decisions shape the design, so let me confirm them before I write the plan:
+
+
+	# Questions
+		How should the PDF + image reference data be persisted?
+			Deterministic generator + cross-check (Recommended)
+		Where should a food's constituent nutrients come from?
+			Hybrid (Recommended)
+		The chart says interactions occur at high doses. How should dose affect the verdict?
+			Configurable %DV gate (Recommended)
+		What should the user be able to select and evaluate?
+			Product + brand rollup (Recommended)
+		How far should the caching layer go now?
+			Memory + disk, Redis-ready (Recommended)
+		Which GUI should be implemented?
+			Streamlit (Recommended)
+			
+			
+	Here is the plan, based on your answers and what the data actually looks like.
+	
+	Goal
+	For a branded food (UPC / FDC id / brand search), report which of its constituent nutrients are SYNERGISTIC or ANTAGONISTIC for the human body, with amounts, %DV, mechanism, evidence and dose caveats. Everything else is neutral (including the chart's "Varies based on nutrient levels" column).
+	
+	All three interfaces share one service layer.
+	
+	1. Project layout
+		nutrient-conflicts/
+		  application.properties        # every path, port, threshold, cache setting
+		  requirements.txt
+		  README.md                     # append below the existing NOTE section
+		  nutrient_conflicts/
+			config.py                   # properties loader + typed Settings
+			cache/                      # base.py, memory.py, disk.py, redis_backend.py, tiered.py
+			reference/                  # pdf_parser.py, image_matrix.py, ingest.py, normalize.py, models.py
+			fdc/                        # build_store.py (CSV -> SQLite), store.py (queries)
+			core/                       # nutrient_profile.py, ingredient_inference.py, interactions.py, evaluation.py, rollup.py, search.py
+			service.py                  # single facade: search/evaluate/rollup/reference/cache ops
+			cli.py
+			api/app.py                  # FastAPI
+			gui/app.py                  # Streamlit
+		  tests/                        # unit + interface smoke tests
+		  data/                         # generated artifacts (gitignored)
+		Each .py gets both required headers: # .config/opencode/AGENTS.md APPLIED and # NutrientConflictsEvaluation Project AGENTS.md APPLIED.
+		
+	2. Configuration (application.properties)
+		- Paths: app.fdc.source.dir (the extracted FoodData_Central_csv_2026-10-29 folder), app.reference.source.dir, app.data.dir=./data, app.cache.dir.
+		- Cache: app.cache.backend=memory+disk, app.cache.memory.max_entries, app.cache.ttl.seconds, app.cache.redis.enabled=false, host/port/db/ttl.
+		- Analysis: analysis.min.dv.percent=10, analysis.include.trace=true, analysis.dose.basis=serving|100g, analysis.antinutrient.gate=presence, analysis.serving.density.g.per.ml=1.0, analysis.brand.max.products=50.
+		- API: api.host, api.port=8000. GUI: gui.port=8501, gui.address=localhost.
+		- Build: app.build.auto=true, app.build.chunk.rows=1000000.
+		Values are read once into a Settings object; interfaces never hard-code them.
+		
+	3. Reference ingestion (deterministic generator + cross-check)
+		- PDF (MET2557...pdf): parse with pdfminer.six page 1. The layout is stable: columns by x0 (nutrient ≈39–110, synergistic ≈127–250, varies ≈266–350, antagonistic ≈386–560) and rows at ~22.5 pt intervals. Algorithm: drop bibliography-number boxes, assign cells to columns by x0, snap each cell to the nearest row label (±10 pt), join multi-line cells, and resolve names through nutrient_name_map (case/punctuation-insensitive, parentheticals stripped). Emit one pair per listed counterpart with evidence_level=chart.
+		- Image (BiologicalConflicts-Matrix-AvsB.png): 5 rows, transcribed as a cited constant (image_matrix.py) with the printed mechanism text; the "Phytates/Oxalates → Calcium/Zinc/Iron" row expands to the 6 real pairs. evidence_level=clinical.
+		- Relation resolution is symmetric: if both directions agree, use that; if one direction says synergistic and the other context-dependent, mark CONTEXT_DEPENDENT and record the other claim; if synergistic vs antagonistic, mark CONTEXT_DEPENDENT with both claims. Mechanisms for PDF-only rows are curated generic text (the chart itself gives no mechanism); image rows keep their printed mechanism.
+		- Persist to data/reference/: interactions.json + interactions.csv (canonical, primary), nutrients.json, aliases.json, dv.json, ingredient_map.json.
+		- Cross-check: compare generated pairs with the pre-existing nutrient_interactions.csv and write crosscheck.json listing missing/extra/relation-changed pairs. I already expect diffs — e.g. the existing file marks VITAMIN_A/VITAMIN_D as context-dependent although the chart's Vitamin A row lists Vitamin D as antagonistic, and VITAMIN_D/VITAMIN_K is synergistic in one row and varying in the other. The generator output wins; the diff is reported for review. Source folders stay read-only.
+		
+	4. FDC store (first-run build, then persisted)
+		- Stream branded_food.csv and food.csv in chunks with usecols; stream food_nutrient.csv (1.5 GB) filtered to the canonical FDC nutrient ids.
+		- Write one SQLite file data/fdc.sqlite:
+		- foods(fdc_id PK, brand_owner, brand_name, subbrand_name, gtin_upc, description, category, serving_size, serving_size_unit, household_serving_fulltext)
+		- ingredients(fdc_id PK, ingredients) (kept separate so searches stay light)
+		- nutrient(fdc_id, nutrient_key, amount, unit, evidence, detail) as WITHOUT ROWID, PK (fdc_id, nutrient_key); evidence = measured or inferred
+		- foods_fts FTS5 index over brand owner / brand name / description for fast substring search.
+		- Ingest computes ingredient-inferred nutrients once (phytate, oxalate, fortificants, food sources) from ingredient_nutrient_map, honouring match_type and blocked_by, so analysis never re-parses 2M ingredient strings.
+		- Auto-builds on first use with progress output; init --force rebuilds. Estimated 10–20 minutes and ~2–3 GB, one time.
+		
+	5. Cache layer
+		- CacheBackend interface: get/set/delete/clear/stats.
+		- Default tiered: in-memory LRU+TTL → disk JSON under app.cache.dir.
+		- Redis adapter implemented behind a lazy import and disabled by default; config keys already present and documented as not active.
+		- First run: SQLite/JSON are built and query results are cached. Later runs: cache first, then persisted artifacts, then in-memory index.
+		- cache stats / cache clear (also deletes persisted artifacts when --all), exposed in CLI, API and GUI.
+		
+	6. Analysis semantics (reused by all interfaces)
+		1. Resolve input — exact UPC, FDC id, or ranked text search. Ambiguity returns candidates instead of guessing.
+		2. Normalize nutrients — per 100 g from FDC; use the primary alias per key and fall back to secondary only when absent (avoids double-counting RAE + IU, DFE + folic acid). Apply conversion_factor (IU→µg etc.).
+		3. Add inferred nutrients — from the ingredient map, labelled inferred with matched keywords; measured values always win.
+		4. Per-serving basis — %DV per serving when serving_size_unit is g, or ml using the configurable density (default 1.0, disclosed in output/README); otherwise fall back to per 100 g.
+		5. Match pairs — unordered lookup in the interactions table; only SYNERGISTIC / ANTAGONISTIC count as conflicts. CONTEXT_DEPENDENT is shown separately as "varies / neutral".
+		6. Dose gate — a pair fires when both nutrients are ≥ analysis.min.dv.percent %DV. Nutrients with no DV (sulfur, phytate, oxalate) use a presence rule. Sub-threshold pairs are still listed as trace when analysis.include.trace=true.
+		7. Output — summary counts, conflict list sorted by strength, per-nutrient profile with %DV and source, neutral list, and caveats (chart applies to high doses; estimates; not medical advice).
+		8. Brand rollup — over all products for a brand_owner (capped): pair frequency, share of products, mean amounts, example products.
+		
+	7. Interfaces
+		- CLI: init, search, analyze (--fdc-id | --upc | --query) [--json] [--all] [--min-dv], brand, reference, cache stats|clear, serve, gui.
+		- API (FastAPI/uvicorn on api.port): GET /health, GET /api/v1/foods/search, GET /api/v1/foods/{fdc_id}, GET /api/v1/foods/{fdc_id}/conflicts, GET /api/v1/brands/search, GET /api/v1/brands/{owner}/conflicts, GET /api/v1/reference/interactions, GET /api/v1/cache/stats, DELETE /api/v1/cache.
+		- GUI (Streamlit on gui.port): tabs for Search & Analyze (search → select → nutrient table + colour-coded conflict cards + filters), Brand rollup, Reference explorer, Cache admin.
+		
+	8. Tests
+		Parser tests against a box-layout fixture (skip real-PDF test if the path is absent), alias/unit tests, ingredient blocked-by tests, pair-symmetry and conflict-resolution tests, dose-gate tests, rollup tests, config tests, cache tier/clear tests, plus API TestClient and CLI smoke tests against a tiny trimmed SQLite fixture.
+	
+	9. README (appended below NOTE)
+		Prerequisites, install, configuration keys, first-run build expectations, all interface usage examples, cache/clear behaviour, and explicit disclosures: the image matrix is a manual transcription; ml→g density assumption; Redis configured but inactive; other reference images in the folder (clinical/medical, labeling/marketing) are not used.
+	
+	
+	Two points to confirm
+	1. Dose basis: I plan per-serving %DV with a documented density fallback for ml; if you'd rather always use per 100 g, say so.
+	2. Brand rollup breadth: capped at 50 products by default (configurable) to keep responses fast — acceptable?
+	
+	I won't create or modify files in Plan mode. When you're ready for implementation, switch agents and I'll build it in phases: reference ingestion → FDC store → core analysis → CLI → API → GUI → tests/README.
+
+
+prompt-2
+	is <local path>\projects\.agents\skills\python-development\SKILL.md also applied to above plan?
+	
+	
+	===agent response ===
+	Yes. That skill file is the source of the new AGENTS.md section — the added text is copied verbatim from projects\.agents\skills\python-development\SKILL.md (same 45 lines). So it now applies twice over: as a loaded skill ("applies to all programs written in Python") and as binding project instructions. It supersedes several choices in the plan I gave you.
+	
+	What changes in the plan
+	Area	| Earlier plan |	Now required
+	File headers	2 comments	|3 comments per .py: global AGENTS, project AGENTS, and PYTHON SKILL APPLIED
+	Env / deps | requirements.txt	|.venv in project root, pyproject.toml, runnable via uv run ([project.scripts])
+	Tests	| pytest	| unittest, end-to-end oriented, minimal mocks
+	Test entry |	ad-hoc	|Makefile test target
+	Coverage |	not specified |	coverage.py, 80% gate (make test fails below 80)
+	Style	| unstated	| PEP8, max line length 132
+	CLI	| argparse |	click, with -h/--help on every command
+	API	| FastAPI	| FastAPI + Pydantic v2 models, generated OpenAPI docs
+	GUI	| Streamlit	| Fastify (Node) + React.js
+	
+	Everything else in the plan stands: reference ingestion from PDF + image, SQLite persisted store built from the FDC CSVs, tiered memory/disk cache with Redis-ready config, shared Python service layer, application.properties, read-only source folders.
+	Tooling is available: uv 0.8.11, Node v26.13.0, npm 12.2.1, botocore... (coverage 7.17, pydantic 2.10, click 8.1, httpx 0.28 already present).
+	
+	One conflict to resolve
+	You chose Streamlit earlier; the new instructions mandate a JavaScript GUI. These can't both be honoured:
+	# Questions
+	Which GUI stack should the revised plan use?
+		React + Fastify (Recommended)
+	How should the React app and the Python API be wired?
+		Fastify proxy + React build (Recommended)
+		
+		
+		
+	Confirmed: yes, the skill applies, and it is now embedded verbatim in AGENTS.md. Here is the revised plan.
+	Revised plan (v2)
+	Layout
+		nutrient-conflicts/
+		  pyproject.toml            # deps, [project.scripts], coverage/ruff config
+		  Makefile                  # test, init, api, gui-build, gui, clean
+		  .venv/                    # created by uv sync
+		  application.properties
+		  README.md                 # appended below NOTE
+		  nutrient_conflicts/
+			config.py               # application.properties -> Settings
+			cache/                  # base, memory, disk, redis_backend, tiered
+			reference/              # pdf_parser, image_matrix, ingest, normalize, models
+			fdc/                    # build_store (CSV -> SQLite), store
+			core/                   # nutrient_profile, ingredient_inference, interactions,
+									# evaluation, rollup, search
+			service.py              # single facade shared by CLI/API/Fastify GUI
+			cli.py                  # click
+			api/app.py              # FastAPI + Pydantic v2 models
+		  gui/
+			package.json            # React + Vite
+			server/                 # Fastify: static build + /api proxy
+			src/                    # React components (Search, Analyze, Brand rollup, Reference, Cache)
+		  tests/                    # unittest, end-to-end style
+		  data/                     # generated SQLite + reference JSON/CSV (gitignored)
+		Every Python file starts with the three required comments:
+		# .config/opencode/AGENTS.md APPLIED
+		# NutrientConflictsEvaluation Project AGENTS.md APPLIED
+		# PYTHON SKILL APPLIED
+	
+	Toolchain
+		- .venv at project root, managed only by uv; dependencies declared in pyproject.toml (pandas, pyarrow, pdfminer.six, fastapi, uvicorn, pydantic/pydantic-settings, click; redis as optional extra).
+		- Entry points: uv run nutrient-conflicts … (also uv run python -m nutrient_conflicts …).
+		- make test → uv run coverage run -m unittest discover -s tests -t . then coverage report --fail-under=80; test target fails if coverage is below 80%.
+		- PEP8 with max line length 132 (configured in pyproject.toml/ruff).
+		- Tests use unittest, mostly end-to-end against a small trimmed SQLite fixture; no mocks except where an external boundary (e.g. Redis unavailable) makes it necessary.
+	
+	Configuration (application.properties)
+		Same keys as before plus GUI wiring: gui.port=8501 → gui.port=5173, gui.api.base.url=http://127.0.0.1:8000, gui.static.dir=gui/dist. The click gui command reads these settings, checks the React build exists, and launches Fastify with API_BASE_URL/PORT env vars, so configuration stays single-sourced in application.properties.
+		Pipelines and semantics (unchanged)
+		- Reference ingestion: deterministic PDF parser (x-coordinate columns, nearest-row snap, alias mapping), cited transcription of the 5-row image with its mechanisms, symmetric pair resolution, cross-check report against the existing nutrient_interactions.csv; persisted to data/reference/*.json|csv. Source folders remain read-only.
+		- FDC store: chunked streaming of branded_food.csv, food.csv, food_nutrient.csv into data/fdc.sqlite (foods, ingredients, nutrient WITHOUT ROWID, FTS5 search index). Ingredient-derived nutrients are computed once at build time and tagged inferred.
+		- Cache: memory LRU+TTL → disk JSON, Redis adapter present but disabled by default, cache stats|clear in all three interfaces.
+		- Analysis: resolve by UPC/FDC id/search; normalize nutrients per 100 g with primary-alias preference and unit conversions; %DV per serving (density fallback for ml, default 1.0); configurable 10% DV gate with trace pairs retained; only SYNERGISTIC/ANTAGONISTIC counted, CONTEXT_DEPENDENT shown as varies/neutral; brand rollup capped at 50 products by default.
+		
+	Interfaces
+		- CLI (click, -h/--help on every command): init, search, analyze, brand, reference, cache, api, gui.
+		- API (FastAPI + Pydantic v2, auto /docs and /openapi.json): /health, /api/v1/foods/search, /api/v1/foods/{fdc_id}, /api/v1/foods/{fdc_id}/conflicts, /api/v1/brands/search, /api/v1/brands/{owner}/conflicts, /api/v1/reference/interactions, /api/v1/cache.
+		- GUI (React + Vite, served by Fastify which proxies /api/* to FastAPI): tabs for Search & Analyze, Brand rollup, Reference explorer, Cache admin. No Python GUI code.
+	
+	README additions
+		Prerequisites (uv, Node 18+, the FDC/reference source paths), uv sync, first-run build cost (~10–20 min, ~2–3 GB), configuration table, all three interface examples, cache clear behaviour, and disclosures: image matrix is a manual transcription; ml→g density assumption; Redis configured but inactive; the other reference images in the folder are not used.
+	
+	Deliverable phases
+		1. Scaffold (pyproject, Makefile, .venv, config, gitignore)
+		2. Reference ingestion + cross-check
+		3. FDC SQLite builder + queries
+		4. Core analysis + service facade
+		5. CLI (click)
+		6. API (FastAPI/Pydantic v2)
+		7. React/Fastify GUI
+		8. unittest suite + coverage ≥80%
+		9. README
+		No files have been created or changed. Switch agents when you want me to implement this.
+		
+		
+		
+prompt-3
+		 branded_food sheet in csv: <local <path>\projects\ds\nutrient-conflicts\brandData\FoodData_Central_csv_2026-10-29\FoodData_Central_csv_2026-10-29\branded_food.csv, 1st row representing column names.
+		
+		Use columns fdc_id, brand_owner and ingredients. To derive nutrient list from ingredients, do following:
+			a. ignore keyword 'INGREDIENTS:' , 'MADE FROM:' , 'CONTAINS LESS THAN 2% OF:', 'CONCENTRATED JUICES OF'
+			b. use comma , as word seperator, add word to nutrient list against each fdc_id.
+			c. some nutrient may further have sub nutrients, listed inside of parenthethis (), fetch them add to main nutrient list against fdc_id. for such cases, remove the main ingredient from the final list.
+			
+		from <local <path>\projects\ds\nutrient-conflicts\brandData\FoodData_Central_csv_2026-10-29\FoodData_Central_csv_2026-10-29\food.csv , get data_type, food_category_id and description the against each fdc_id from above file.
+		
+		persist fdc_id, brand_owner, data_type, food_category_id and description and derieved nutrient list in py readable format for later reference. 
+		load the result data from disk to system/jvm cache (1st time at start up) for quicker access later.	
+		
+		
+		===agent response ===
+		Let me check how the ingredient text actually behaves against those rules before revising the plan.
+		
+		I can't write the code while in Plan mode — switch agents when you're ready and I'll implement. Meanwhile, this new request changes the design in specific ways, and there are a few choices only you can settle.
+	What the new request adds
+		The earlier persisted brand record becomes the input to a new analysis layer:
+		fdc_id → {brand, brand_owner, description, food_category_id, data_type, nutrient_list}
+		and the analysis returns, for one fdc_id or all products of one brand_owner:
+		1. identity fields + the derived nutrient list,
+		2. a Synergistic table and an Antagonistic table (pair, strength, evidence, mechanism, quantities, %DV, source),
+		3. a summary: "conflicting nutrients identified" or "none identified", with antagonistic pairs visually highlighted,
+		4. when any antagonistic pair exists, a warning to review with a dietitian, naming the nutrients and quantities.
+		The reference pairs are pairwise (58 curated pairs from the PDF + image), so matching is pairwise, symmetric, and case-insensitive.
+		Things I noticed in the real ingredient strings
+		- Nested brackets appear, e.g. CHEDDAR CHEESE** (CHEDDAR CHEESE [CULTURED MILK, SALT, ENZYMES], WHEY, ...), so the splitter must handle (), [] recursively, not just one level.
+		- Parentheses are often qualifiers, not sub-ingredients: (FROM CONCENTRATE), (47%), (USA, MEXICO), (THAILAND), (PROCESSING AID), (WITH ETHOXYQUIN ADDED AS A PRESERVATIVE), (TO PROTECT TASTE). Expanding every parenthesis literally would add country names and percentages to the nutrient list.
+		- Headers appear mid-string: CONTAINS LESS THAN 2% OF: and CONCENTRATED JUICES OF occur after other commas, and statements like CONTAINS: WHEAT, MILK trail the ingredient text.
+		- Tokens carry decoration: POTATOES**, CALCIUM DISODIUM EDTA ADDED TO PROTECT FLAVOR, AND/OR.
+		- food.csv's food_category_id for branded foods is a category text (e.g. "Bread"), not always a numeric id — it will be persisted as a string.
+		- Ingredient tokens must still be mapped to canonical nutrient keys (e.g. SALT → SODIUM, CARROTS → VITAMIN_A) before any reference pair can match; otherwise combos would almost never fire.
+		
+	What I need from you
+	# Questions
+		You now say all code must be Python. Which GUI stack should this use?
+			use what is mentioned in here <path>\nutrition-evaluation\.agents\skills\python-development\SKILL.md
+		The warning must include "quantity of nutrients involved". Where should quantities come from? (The persisted brand data currently has ingredient words only, no amounts.)
+			Use FDC nutrient amounts (Recommended)
+		A brand_owner can own thousands of products. What should a brand_owner query return?
+			Per product + aggregate (Recommended)
+		How should ingredient words become the nutrients used for pair matching?
+			Map via existing crosswalk (Recommended)
+		How should qualifier parentheses be handled?
+			Configurable qualifier filter (Recommended)
+		How should the derived brand data be persisted and loaded into cache?
+			SQLite + JSONL, lazy (Recommended)
+
+		
+prompt-4
+		write a program to check against which brand_owner, any of the nutrient list combo falls under categories of Synergistic or Antagonistic nutrients. extend the program to also query using fdc_id alternatively.
+		Use the retreived data from above prompts(both the reference data, and brand data).
+		
+		all code must be implemented in Python.
+		GUI, CLI and API - all 3 interfaces must be implemented.
+		
+		expose an attribute which takes fdc_id and or brand_owner in response, list:
+		1. brand, fdc_id, description, food_category_id, data_type, brand_owner and nutrient list
+		2. Synergistic, Antagonistic in a table format 
+		3. Summary statement - conflicting nutrients identified or none identified. Highlight Antagonistic combo of nutrients in particular.
+		
+		if Antagonistic nutrients identified, add a warning statement, to check dietian on results with quantity of nutrients involved and appropriate next steps.
+		
+		
+		===agent response ===
+		
+		The path you gave doesn't exist. I searched and found the same skill, byte-identical, at two places:
+		- C:\...\OpenCodeProjects\agentic-intro\publicProjects\.agents\skills\python-development\SKILL.md
+		- C:\...\projects\.agents\skills\python-development\SKILL.md
+		Its contents are the same 45 lines I quoted earlier: PYTHON SKILL APPLIED header, unittest, Makefile test target, PEP8 @132, .venv, pyproject.toml, runnable with uv, coverage 80%, click for CLI, FastAPI + Pydantic v2 for API, Fastify + React.js for GUI.
+		So yes — that skill governs this build. Note the direct conflict: you said "all code must be Python", but this skill mandates a JavaScript GUI. Following your instruction to use the skill means the Python rule applies to the core, CLI and API, with the GUI in Fastify + React.
+
+		Important discovery: a near-complete implementation already exists
+		
+		publicProjects\nutrition-evaluation contains nutri_eval, a working implementation of this same problem:
+		- ingredients.py already implements exactly your parsing rules (prefix stripping, comma/semicolon split, recursive ()/[] expansion with parent removal, qualifier and percentage filtering).
+		- ingest.py + store.py build derived nutrient + measured quantity tables from branded_food.csv, food.csv, food_nutrient.csv.
+		- refsources/ already parses the Minich PDF by column geometry and transcribes the Biological Conflicts image, merging both into a knowledge base.
+		- analyzer.py matches pairs, gates on %DV, and reports quantities.
+		- services.py already exposes evaluate_food, evaluate_brand, brand_conflicts with a summary statement and a dietitian warning.
+		- Full unittest suite (11 test modules) and a 41 KB README.
+		Its GUI, however, is Tkinter + a static HTML page, not Fastify + React, and its persisted export is parquet/CSV rather than the JSONL you chose.
+		
+		Proposed approach
+		Port and adapt that codebase into this repo as nutrient_conflicts, rather than rewriting from scratch:
+		1. Copy nutri_eval → nutrient_conflicts, retarget headers/config to this project, point dataset/reference paths at C:\...\projects\ds\nutrient-conflicts\... (read-only), and write all generated data to this repo's data/.
+		2. Keep/port ingredients.py, refsources/, ingest.py, store.py, analyzer.py, then reshape the service responses to your exact contract.
+		3. Add data/store/branded_foods.jsonl.gz as the py-readable export beside SQLite; lazy-load fdc profiles into an LRU at startup.
+		4. Add the exact response object (below) and wire it through CLI, API and GUI.
+		5. Replace the GUI with a Vite + React SPA served by Fastify, proxying /api/* to FastAPI.
+		6. Port the tests, raise coverage to ≥80%, add Makefile, pyproject.toml, .venv via uv.
+		
+		Response contract (single shape, both query modes)
+		{
+		  "brand": "SWANSON",
+		  "fdc_id": 1105905,
+		  "description": "SWANSON BROTH BEEF",
+		  "food_category_id": "Herbs/Spices/Extracts",
+		  "data_type": "branded_food",
+		  "brand_owner": "CAMPBELL SOUP COMPANY",
+		  "nutrient_list": ["BEEF STOCK", "CARROTS", "CELERY", "ONIONS", "SALT", "..."],
+		  "nutrient_keys": ["CALCIUM", "IRON", "SODIUM", "..."],
+		  "synergistic": [ {"pair": "...", "strength": "...", "evidence": "...", "mechanism": "...", "quantity_a": "...", "quantity_b": "..."} ],
+		  "antagonistic": [ {"pair": "...", "highlighted": true, "quantity_a": "12 mg (5% DV)", "quantity_b": "..."} ],
+		  "summary": {
+			"statement": "1 antagonistic and 0 synergistic nutrient combination(s) identified ...",
+			"counts": {"antagonistic": 1, "synergistic": 0, "context_dependent": 0}
+		  },
+		  "warning": {
+			"required": true,
+			"text": "Check these results with a registered dietitian ...",
+			"pairs": ["CALCIUM + IRON"],
+			"quantities": ["CALCIUM 12 mg (5% DV), IRON 0.8 mg (4% DV)"],
+			"next_steps": ["Review ...", "Adjust portion sizes ...", "Do not eliminate nutrients ..."]
+		  }
+		}
+		For brand_owner queries: products[] (paginated, each with the shape above) plus an aggregate block (pairs recurring across the product line, product counts, max %DV) and a brand-level summary/warning.
+		Decisions to confirm
+		# Questions
+		Should I port the existing nutri_eval implementation or build fresh?
+		Port and adapt nutri_eval (Recommended)
+		Confirm the GUI stack, given the "all code in Python" instruction conflicts with the skill.
+		Fastify + React (Recommended)
+		Where should the persisted store be built?
+		Build fresh in this repo (Recommended)
+		+Thought · 20.7s
+		Final plan (v3) — port nutri_eval, adapt to this project
+		Source and target
+		- Source: publicProjects\nutrition-evaluation\nutri_eval (proven PDF/image ingestion, ingredient parser, SQLite store, analyzer, tests).
+		- Target: projects\nutrient-conflicts, package nutrient_conflicts, CLI nutrient-conflicts.
+		- Data: built fresh into nutrient-conflicts\data\ from the external CSV/reference folders, which stay read-only.
+		Toolchain (from the skill, now confirmed)
+		- .venv via uv; pyproject.toml with [project.scripts]; runnable as uv run nutrient-conflicts ….
+		- unittest (no pytest), Makefile test target, coverage.py reporting with --fail-under=80.
+		- PEP8, max line length 132.
+		- Every Python file carries three headers:
+		# .config/opencode/AGENTS.md APPLIED
+		# NutrientConflictsEvaluation Project AGENTS.md APPLIED
+		# PYTHON SKILL APPLIED
+		- click CLI with -h/--help everywhere; FastAPI + Pydantic v2 with generated /docs; Fastify + React GUI.
+		Module mapping (port + adapt)
+		New module	From	Change
+		config.py	nutri_eval/config.py	paths → external sources, new keys
+		ingredients.py	same	keep; qualifier list configurable in properties
+		refsources/*	same	keep PDF + image extractors; output to data/reference
+		ingest.py, store.py	same	add food_category_id, brand_name; add JSONL export; LRU profile cache
+		analyzer.py	same	keep pair matching, %DV gate, quantities
+		services.py	same	reshape to the required response contract; per-product + aggregate for brand_owner
+		models.py	same	add nutrient_list, synergistic[], antagonistic[], summary, warning
+		cli.py, api.py	same	adapt commands/routes; keep shared service
+		gui_tk.py, web/index.html	same	replace with gui/ (Vite + React) + Fastify server
+		tests/*	same	port, extend, keep coverage ≥80
+		cache.py	same	memory LRU → disk JSON; Redis adapter disabled by default
+		
+		Data pipeline (your specification)
+		1. Stream branded_food.csv (fdc_id, brand_owner, brand_name, ingredients) and food.csv (description, data_type, food_category_id), plus filtered food_nutrient.csv for quantities.
+		2. Derive each fdc_id's nutrient list:
+		- strip INGREDIENTS:, MADE FROM:, CONTAINS LESS THAN 2% OF:, CONCENTRATED JUICES OF (plus the existing variants, all configurable);
+		- split on commas/semicolons;
+		- recursively expand ( ) / [ ]: keep sub-items, drop the parent;
+		- drop percentage-only groups and configurable qualifier phrases (FROM CONCENTRATE, TO PROTECT, PROCESSING AID, countries, PRESERVATIVES, …);
+		- clean **, trailing periods, collapse whitespace; de-duplicate preserving order.
+		3. Map tokens to canonical nutrient keys through ingredient_nutrient_map.csv + aliases; unmapped tokens stay neutral.
+		4. Persist per fdc_id: brand_name, brand_owner, data_type, food_category_id, description, nutrient_list (raw phrases), nutrient_list_keys, plus measured amounts/%DV. SQLite is the query store; data/store/branded_foods.jsonl.gz is the py-readable export.
+		5. On startup, load the compact index and warm profiles into an LRU cache; SQLite rows are the durable fallback. cache clear --all removes cache and generated store.
+		Exact response (both query modes)
+		Single product (fdc_id) returns the object; brand_owner returns {products: [...], aggregate: {...}, summary, warning} with pagination.
+		Each product object: brand, fdc_id, description, food_category_id, data_type, brand_owner, nutrient_list, nutrient_keys, synergistic[], antagonistic[] (each pair with strength, evidence, mechanism, quantities, %DV, highlighted flag), summary.statement, summary.counts, and warning (required only when antagonistic pairs exist) containing the dietitian text, the pairs, their quantities, and next steps. Text templates live in application.properties.
+		
+		Interfaces
+		- CLI (click): ingest, reference build, status, search, show, evaluate --fdc-id | --brand-owner [--json] [--page], conflicts build, cache stats|clear, serve, gui.
+		- API (FastAPI/Pydantic v2): GET /api/v1/foods/{fdc_id}, GET /api/v1/brands/{owner}/conflicts?page=&size=, GET /api/v1/foods/search, GET /api/v1/brands/search, GET /api/v1/reference/interactions, GET /api/v1/cache/stats, DELETE /api/v1/cache, GET /health.
+		- GUI (React + Vite, served by Fastify which proxies /api): search by brand/fdc_id, product detail with nutrient list, side-by-side synergistic/antagonistic tables, antagonistic rows in red, summary banner, warning panel, brand rollup view, cache admin.
+		Config (application.properties)
+		Source paths, store.dir, cache.*, parse.*, analysis.min.dv.percent, conflicts.* text templates, api.port, gui.port, gui.api.base.url, pagination sizes, logging. No hard-coded values in code.
+		Tests
+		Port the 11 existing test modules; add tests for: the four ignore prefixes, nested-bracket expansion with parent removal, qualifier filtering, category/data_type persistence, JSONL round-trip, LRU reload from disk, fdc_id response fields, brand_owner per-product + aggregate, warning presence/absence, API pagination, CLI --json, coverage gate.
+		First-run expectations (documented in README)
+		One-time build from the CSVs: roughly 10–20 minutes, ~2–3 GB in data/. The README will also disclose that the image matrix is a reviewed transcription, that %DV uses a density assumption for ml servings, that Redis is configured but inactive, and that this is not medical advice.
+	
+		Implementation order
+		1. Scaffold: pyproject.toml, Makefile, .venv, gitignore, config.
+		2. Port reference ingestion → data/reference.
+		3. Port ingest/store → SQLite + JSONL + LRU.
+		4. Port analyzer/service + new response contract.
+		5. CLI.
+		6. API.
+		7. React + Fastify GUI.
+		8. Tests + coverage ≥80%.
+		9. README (append below NOTE).
+		No files have been modified. Switch agents when you want me to start implementing.
+		
+
+		
+Build mode:
+
+prompt-6
+	y
+	
+	===agent response ===
+	I'll start implementing now. First, scaffold and copy the proven implementation.
+	
+	The implementation is in place and the test suite passes (191 tests, 89% coverage). The full USDA ingest is currently running in the background against the real 2.5 GB CSV release; it should finish shortly. Once it completes I'll verify real fdc_id and brand_owner queries and the GUI/API end to end.
+	What is already done:
+		- Port + adapt of nutri_eval into nutrient_conflicts, with all three required headers in every Python file.
+		- Reference ingestion: PDF chart parsed from its text layer; matrix image validated against the reviewed transcription; merged KB, human-readable CSVs/Markdown, manifest and a generated-vs-curated reference-crosscheck.json.
+		- Brand persistence: food.csv + branded_food.csv parsed per your rules (prefix stripping, comma/semicolon split, recursive parenthesis expansion with parent removal, qualifier filtering) into SQLite and branded_foods.jsonl.gz with nutrient_list (derived words) and nutrient_keys.
+		- Analysis and response contract: brand, fdc_id, description, food_category_id, data_type, brand_owner, nutrient_list, synergistic[], antagonistic[] (highlighted), summary statement and dietitian warning with quantities and next steps.
+		- CLI (click), API (FastAPI + Pydantic v2, /docs), GUI (React + Vite served by Fastify, /api/v1 proxy), all backed by one service layer.
+		- Cache: memory LRU → disk JSON → SQLite/JSONL, bounded startup warm load, Redis config (inactive), clear/purge commands.
+		- Toolchain: pyproject.toml, .venv via uv, Makefile test target, unittest, coverage ≥80%, PEP8 @132.
+		I'll report the real-data verification as soon as the ingest completes.
+		
+
+	
+	
+	Implementation complete and verified end to end against the real USDA release.
+	What was built
+	<path>\projects\nutrient-conflicts
+	application.properties      every path, port, threshold, cache setting
+	pyproject.toml, Makefile    uv / .venv / coverage / unittest toolchain
+	nutrient_conflicts/         shared Python core + CLI + API
+	  refsources/               PDF chart parser + image-matrix ingestion
+	  ingredients.py            ingredient-list derivation
+	  ingest.py, store.py       SQLite store + JSONL export
+	  analyzer.py               pair matching, %DV gate, quantities
+	  services.py               single service used by all interfaces
+	  cli.py, api.py            click CLI, FastAPI + Pydantic v2
+	gui/                        React (Vite) SPA + Fastify proxy
+	reference/sources/          reviewed matrix transcription
+	tests/                      191 unittest tests + fixture dataset
+	data/                       generated store/reference/results/cache
+	Every Python file carries the three headers, and the global AGENTS.md header was added to the new JS/JSX/CSS/HTML files as required by the updated instruction.
+	
+	Real-data verification
+	First run (completed):
+	Item	Result
+	Branded foods	2,004,024
+	Derived nutrient rows	9,109,035
+	Measured quantities	9,194,338
+	SQLite store	2.5 GB
+	JSONL export	156 MB
+	Reference pairs	58 (32 antagonistic, 21 synergistic, 5 context-dependent)
+	Brand rollup	215,087 pair rows across 25,348 brands
+	
+	Verified responses:
+	- fdc_id 344616 (Cheez-It): 5 antagonistic + 1 synergistic pairs, warning required, quantities Calcium: 556 MG (42.8% DV), Iron: 5 MG (27.8% DV).
+	- brand_owner "Kellogg Company US": 10,692 products, paginated products, brand rollup (56 pairs), summary and dietitian warning.
+	- fdc_id 2757627 (Alouette spinach cheese): correctly infers calcium/iron/oxalate/phytate from ingredients even when USDA has no measured amounts.
+	Run it
+	
+	# CLI
+	uv run nutrient-conflicts evaluate --fdc-id 344616
+	uv run nutrient-conflicts evaluate --brand-owner "Kellogg Company US" --size 2 --json
+	uv run nutrient-conflicts reference crosscheck
+	uv run nutrient-conflicts conflicts status
+
+	# API (docs at /docs)
+	uv run nutrient-conflicts serve
+
+	# GUI (React + Fastify; builds if needed)
+	uv run nutrient-conflicts gui
+	All three were exercised:
+	- GUI page http://127.0.0.1:5173/ → 200
+	- GET /api/v1/health through the Fastify proxy → 200
+	- GET /api/v1/foods/344616/evaluation through the proxy → 200, 5 antagonistic pairs, warning required
+	
+	Tests and coverage
+	Ran 191 tests ... OK
+	TOTAL 3361 statements, 368 missed, 89% coverage
+	make is not installed on this Windows machine, so make test could not be invoked directly; the exact commands it wraps were run successfully with uv run.
+	
+	Disclosures (also in README.md)
+	- The matrix image has no text layer: it is a reviewed transcription validated against the image SHA-256/bytes/dimensions.
+	- The PDF chart is parsed from its text layer, not OCR.
+	- Phytate/oxalate are usually not published for branded foods; they are inferred from ingredients and labelled accordingly.
+	- “Quantity not published” appears when USDA has no measurement for that nutrient.
+	- brand_owner is empty for some FDC products; brand falls back to the owner when brand_name is empty.
+	- Redis is configured but inactive; no Docker, remote-server or security mocks are used.
+	- Results are informational, not medical advice; antagonistic findings trigger the dietitian-review warning.
+				
