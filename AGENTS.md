@@ -11,5 +11,7 @@ The purpose to improve performance of response to subsequent queries.
 Do not edit the original data source folders, add paramember in application.properties file to take the external data source path.
 
 
-When multiple interfaces CLI, API or GUI ) are to be exposed, write code query data and derive results such that same code can be reused for all interfaces.
+When multiple interfaces CLI, API or GUI are to be exposed, write code query data and derive results such that same code can be reused for all interfaces.
+
+
 
