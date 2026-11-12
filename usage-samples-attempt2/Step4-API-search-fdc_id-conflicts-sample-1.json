@@ -1,0 +1,544 @@
+GET http://127.0.0.1:8077/foods/1105929/evaluation
+{
+    "brand": "PEPPERIDGE FARM",
+    "fdc_id": 1105929,
+    "description": "PEPPERIDGE FARM COOKIES",
+    "food_category_id": "Biscuits/Cookies",
+    "data_type": "branded_food",
+    "brand_owner": "PEPPERIDGE FARM",
+    "nutrient_list": [
+        "FLOUR",
+        "NIACIN",
+        "REDUCED IRON",
+        "THIAMINE MONONITRATE",
+        "RIBOFLAVIN",
+        "FOLIC ACID",
+        "SUGAR",
+        "PALM AND/OR SOYBEAN AND HYDROGENATED SOYBEAN",
+        "INVERT SYRUP",
+        "MOLASSES",
+        "BUTTER",
+        "CORNSTARCH",
+        "NONFAT MILK",
+        "EGG WHITES",
+        "SALT",
+        "BAKING SODA",
+        "SOY LECITHIN. CONTAINS: WHEAT",
+        "MILK",
+        "EGGS",
+        "SOY"
+    ],
+    "nutrient_keys": [
+        "CALCIUM",
+        "IRON",
+        "PHYTATE",
+        "POTASSIUM",
+        "SELENIUM",
+        "SODIUM",
+        "VITAMIN_B1",
+        "VITAMIN_B12",
+        "VITAMIN_B2",
+        "VITAMIN_B3",
+        "VITAMIN_B9",
+        "VITAMIN_D"
+    ],
+    "nutrients": [
+        {
+            "nutrient_key": "CALCIUM",
+            "name": "Calcium, Ca",
+            "category": "mineral",
+            "unit": "MG",
+            "source_kind": "food",
+            "phrases": [
+                "MOLASSES",
+                "NONFAT MILK",
+                "MILK"
+            ],
+            "inferred": false,
+            "amount": 37,
+            "dv_percent": 2.85
+        },
+        {
+            "nutrient_key": "IRON",
+            "name": "Iron, Fe",
+            "category": "mineral",
+            "unit": "MG",
+            "source_kind": "food",
+            "phrases": [
+                "REDUCED IRON",
+                "SOY"
+            ],
+            "inferred": false,
+            "amount": 1.85,
+            "dv_percent": 10.28
+        },
+        {
+            "nutrient_key": "PHYTATE",
+            "name": "Phytic acid",
+            "category": "antinutrient",
+            "unit": "MG",
+            "source_kind": "food",
+            "phrases": [
+                "SOY"
+            ],
+            "inferred": true,
+            "amount": null,
+            "dv_percent": null
+        },
+        {
+            "nutrient_key": "POTASSIUM",
+            "name": "Potassium, K",
+            "category": "mineral",
+            "unit": "MG",
+            "source_kind": "measured",
+            "phrases": [],
+            "inferred": false,
+            "amount": 74,
+            "dv_percent": 1.57
+        },
+        {
+            "nutrient_key": "SELENIUM",
+            "name": "Selenium, Se",
+            "category": "mineral",
+            "unit": "UG",
+            "source_kind": "food",
+            "phrases": [
+                "EGG WHITES"
+            ],
+            "inferred": false,
+            "amount": null,
+            "dv_percent": null
+        },
+        {
+            "nutrient_key": "SODIUM",
+            "name": "Sodium, Na",
+            "category": "mineral",
+            "unit": "MG",
+            "source_kind": "food",
+            "phrases": [
+                "SALT"
+            ],
+            "inferred": false,
+            "amount": 352,
+            "dv_percent": 15.3
+        },
+        {
+            "nutrient_key": "VITAMIN_B1",
+            "name": "Thiamin",
+            "category": "vitamin",
+            "unit": "MG",
+            "source_kind": "additive",
+            "phrases": [
+                "THIAMINE MONONITRATE"
+            ],
+            "inferred": false,
+            "amount": null,
+            "dv_percent": null
+        },
+        {
+            "nutrient_key": "VITAMIN_B12",
+            "name": "Vitamin B-12",
+            "category": "vitamin",
+            "unit": "UG",
+            "source_kind": "food",
+            "phrases": [
+                "EGG WHITES"
+            ],
+            "inferred": false,
+            "amount": null,
+            "dv_percent": null
+        },
+        {
+            "nutrient_key": "VITAMIN_B2",
+            "name": "Riboflavin",
+            "category": "vitamin",
+            "unit": "MG",
+            "source_kind": "additive",
+            "phrases": [
+                "RIBOFLAVIN"
+            ],
+            "inferred": false,
+            "amount": null,
+            "dv_percent": null
+        },
+        {
+            "nutrient_key": "VITAMIN_B3",
+            "name": "Niacin",
+            "category": "vitamin",
+            "unit": "MG",
+            "source_kind": "additive",
+            "phrases": [
+                "NIACIN"
+            ],
+            "inferred": false,
+            "amount": null,
+            "dv_percent": null
+        },
+        {
+            "nutrient_key": "VITAMIN_B9",
+            "name": "Folate, DFE",
+            "category": "vitamin",
+            "unit": "UG",
+            "source_kind": "additive",
+            "phrases": [
+                "FOLIC ACID"
+            ],
+            "inferred": false,
+            "amount": null,
+            "dv_percent": null
+        },
+        {
+            "nutrient_key": "VITAMIN_D",
+            "name": "Vitamin D (D2 + D3)",
+            "category": "vitamin",
+            "unit": "UG",
+            "source_kind": "measured",
+            "phrases": [],
+            "inferred": false,
+            "amount": 0,
+            "dv_percent": 0
+        }
+    ],
+    "synergistic": [],
+    "antagonistic": [
+        {
+            "pair": "Calcium + Phytate",
+            "nutrient_a": "CALCIUM",
+            "nutrient_b": "PHYTATE",
+            "nutrient_a_name": "Calcium",
+            "nutrient_b_name": "Phytate",
+            "relation": "ANTAGONISTIC",
+            "highlighted": true,
+            "strength": "strong",
+            "evidence_level": "clinical",
+            "mechanism": "Plant compounds act as \"anti-nutrients\", binding tightly to these minerals to form insoluble precipitates that cannot be absorbed.",
+            "dose_note": "",
+            "source": "Biological conflicts matrix (research summary)",
+            "quantity_known": false,
+            "quantity_a": "Calcium: 37 MG (2.9% DV)",
+            "quantity_b": "Phytate: quantity not published",
+            "dv_percent_a": 2.85,
+            "dv_percent_b": null,
+            "amount_a": 37,
+            "amount_b": null,
+            "unit_a": "MG",
+            "unit_b": "MG",
+            "evidences_a": [
+                "MOLASSES",
+                "NONFAT MILK",
+                "MILK"
+            ],
+            "evidences_b": [
+                "SOY"
+            ]
+        },
+        {
+            "pair": "Calcium + Vitamin B2",
+            "nutrient_a": "CALCIUM",
+            "nutrient_b": "VITAMIN_B2",
+            "nutrient_a_name": "Calcium",
+            "nutrient_b_name": "Vitamin B2",
+            "relation": "ANTAGONISTIC",
+            "highlighted": true,
+            "strength": "moderate",
+            "evidence_level": "chart",
+            "mechanism": "The chart lists these nutrients as antagonistic: they compete for absorption pathways, so a high intake of one reduces the availability of the other.",
+            "dose_note": "",
+            "source": "Minich vitamin-mineral interactions chart (MET2557)",
+            "quantity_known": false,
+            "quantity_a": "Calcium: 37 MG (2.9% DV)",
+            "quantity_b": "Vitamin B2: quantity not published",
+            "dv_percent_a": 2.85,
+            "dv_percent_b": null,
+            "amount_a": 37,
+            "amount_b": null,
+            "unit_a": "MG",
+            "unit_b": "MG",
+            "evidences_a": [
+                "MOLASSES",
+                "NONFAT MILK",
+                "MILK"
+            ],
+            "evidences_b": [
+                "RIBOFLAVIN"
+            ]
+        },
+        {
+            "pair": "Iron + Phytate",
+            "nutrient_a": "IRON",
+            "nutrient_b": "PHYTATE",
+            "nutrient_a_name": "Iron",
+            "nutrient_b_name": "Phytate",
+            "relation": "ANTAGONISTIC",
+            "highlighted": true,
+            "strength": "strong",
+            "evidence_level": "clinical",
+            "mechanism": "Plant compounds act as \"anti-nutrients\", binding tightly to these minerals to form insoluble precipitates that cannot be absorbed.",
+            "dose_note": "",
+            "source": "Biological conflicts matrix (research summary)",
+            "quantity_known": false,
+            "quantity_a": "Iron: 1.85 MG (10.3% DV)",
+            "quantity_b": "Phytate: quantity not published",
+            "dv_percent_a": 10.28,
+            "dv_percent_b": null,
+            "amount_a": 1.85,
+            "amount_b": null,
+            "unit_a": "MG",
+            "unit_b": "MG",
+            "evidences_a": [
+                "REDUCED IRON",
+                "SOY"
+            ],
+            "evidences_b": [
+                "SOY"
+            ]
+        },
+        {
+            "pair": "Vitamin B12 + Vitamin B9",
+            "nutrient_a": "VITAMIN_B12",
+            "nutrient_b": "VITAMIN_B9",
+            "nutrient_a_name": "Vitamin B12",
+            "nutrient_b_name": "Vitamin B9",
+            "relation": "ANTAGONISTIC",
+            "highlighted": true,
+            "strength": "moderate",
+            "evidence_level": "chart",
+            "mechanism": "The chart lists these nutrients as antagonistic: they compete for absorption pathways, so a high intake of one reduces the availability of the other.",
+            "dose_note": "",
+            "source": "Minich vitamin-mineral interactions chart (MET2557)",
+            "quantity_known": false,
+            "quantity_a": "Vitamin B12: quantity not published",
+            "quantity_b": "Vitamin B9: quantity not published",
+            "dv_percent_a": null,
+            "dv_percent_b": null,
+            "amount_a": null,
+            "amount_b": null,
+            "unit_a": "UG",
+            "unit_b": "UG",
+            "evidences_a": [
+                "EGG WHITES"
+            ],
+            "evidences_b": [
+                "FOLIC ACID"
+            ]
+        }
+    ],
+    "context_dependent": [],
+    "findings": [
+        {
+            "nutrient_a": "CALCIUM",
+            "nutrient_b": "PHYTATE",
+            "relation": "ANTAGONISTIC",
+            "strength": "strong",
+            "evidence_level": "clinical",
+            "mechanism": "Plant compounds act as \"anti-nutrients\", binding tightly to these minerals to form insoluble precipitates that cannot be absorbed.",
+            "dose_note": "",
+            "source": "Biological conflicts matrix (research summary)",
+            "active": true,
+            "quantity_known": false,
+            "pressure": 0.5,
+            "dv_percent_a": 2.85,
+            "dv_percent_b": null,
+            "source_kind_a": "food",
+            "source_kind_b": "food",
+            "evidences_a": [
+                "MOLASSES",
+                "NONFAT MILK",
+                "MILK"
+            ],
+            "evidences_b": [
+                "SOY"
+            ],
+            "reason": "measured quantity unavailable; pair judged on ingredient presence"
+        },
+        {
+            "nutrient_a": "CALCIUM",
+            "nutrient_b": "VITAMIN_B2",
+            "relation": "ANTAGONISTIC",
+            "strength": "moderate",
+            "evidence_level": "chart",
+            "mechanism": "The chart lists these nutrients as antagonistic: they compete for absorption pathways, so a high intake of one reduces the availability of the other.",
+            "dose_note": "",
+            "source": "Minich vitamin-mineral interactions chart (MET2557)",
+            "active": true,
+            "quantity_known": false,
+            "pressure": 0.5,
+            "dv_percent_a": 2.85,
+            "dv_percent_b": null,
+            "source_kind_a": "food",
+            "source_kind_b": "additive",
+            "evidences_a": [
+                "MOLASSES",
+                "NONFAT MILK",
+                "MILK"
+            ],
+            "evidences_b": [
+                "RIBOFLAVIN"
+            ],
+            "reason": "measured quantity unavailable; pair judged on ingredient presence"
+        },
+        {
+            "nutrient_a": "IRON",
+            "nutrient_b": "PHYTATE",
+            "relation": "ANTAGONISTIC",
+            "strength": "strong",
+            "evidence_level": "clinical",
+            "mechanism": "Plant compounds act as \"anti-nutrients\", binding tightly to these minerals to form insoluble precipitates that cannot be absorbed.",
+            "dose_note": "",
+            "source": "Biological conflicts matrix (research summary)",
+            "active": true,
+            "quantity_known": false,
+            "pressure": 0.5,
+            "dv_percent_a": 10.28,
+            "dv_percent_b": null,
+            "source_kind_a": "food",
+            "source_kind_b": "food",
+            "evidences_a": [
+                "REDUCED IRON",
+                "SOY"
+            ],
+            "evidences_b": [
+                "SOY"
+            ],
+            "reason": "measured quantity unavailable; pair judged on ingredient presence"
+        },
+        {
+            "nutrient_a": "VITAMIN_B12",
+            "nutrient_b": "VITAMIN_B9",
+            "relation": "ANTAGONISTIC",
+            "strength": "moderate",
+            "evidence_level": "chart",
+            "mechanism": "The chart lists these nutrients as antagonistic: they compete for absorption pathways, so a high intake of one reduces the availability of the other.",
+            "dose_note": "",
+            "source": "Minich vitamin-mineral interactions chart (MET2557)",
+            "active": true,
+            "quantity_known": false,
+            "pressure": 0.5,
+            "dv_percent_a": null,
+            "dv_percent_b": null,
+            "source_kind_a": "food",
+            "source_kind_b": "additive",
+            "evidences_a": [
+                "EGG WHITES"
+            ],
+            "evidences_b": [
+                "FOLIC ACID"
+            ],
+            "reason": "measured quantity unavailable; pair judged on ingredient presence"
+        },
+        {
+            "nutrient_a": "CALCIUM",
+            "nutrient_b": "IRON",
+            "relation": "ANTAGONISTIC",
+            "strength": "strong",
+            "evidence_level": "clinical",
+            "mechanism": "Compete for the same divalent metal transporters in the gut; calcium temporarily inhibits iron absorption.",
+            "dose_note": "",
+            "source": "Minich vitamin-mineral interactions chart (MET2557); Biological conflicts matrix (research summary)",
+            "active": false,
+            "quantity_known": true,
+            "pressure": 0,
+            "dv_percent_a": 2.85,
+            "dv_percent_b": 10.28,
+            "source_kind_a": "food",
+            "source_kind_b": "food",
+            "evidences_a": [
+                "MOLASSES",
+                "NONFAT MILK",
+                "MILK"
+            ],
+            "evidences_b": [
+                "REDUCED IRON",
+                "SOY"
+            ],
+            "reason": "below the 5% DV threshold"
+        },
+        {
+            "nutrient_a": "CALCIUM",
+            "nutrient_b": "SODIUM",
+            "relation": "ANTAGONISTIC",
+            "strength": "moderate",
+            "evidence_level": "chart",
+            "mechanism": "The chart lists these nutrients as antagonistic: they compete for absorption pathways, so a high intake of one reduces the availability of the other.",
+            "dose_note": "",
+            "source": "Minich vitamin-mineral interactions chart (MET2557)",
+            "active": false,
+            "quantity_known": true,
+            "pressure": 0,
+            "dv_percent_a": 2.85,
+            "dv_percent_b": 15.3,
+            "source_kind_a": "food",
+            "source_kind_b": "food",
+            "evidences_a": [
+                "MOLASSES",
+                "NONFAT MILK",
+                "MILK"
+            ],
+            "evidences_b": [
+                "SALT"
+            ],
+            "reason": "below the 5% DV threshold"
+        }
+    ],
+    "summary": {
+        "conflicting": true,
+        "statement": "4 antagonistic and 0 synergistic nutrient combination(s) identified for PEPPERIDGE FARM (PEPPERIDGE FARM COOKIES); 0 combination(s) depend on dose.",
+        "counts": {
+            "synergistic": 0,
+            "antagonistic": 4,
+            "context_dependent": 0,
+            "combinations": 4,
+            "pairs_present": 6
+        }
+    },
+    "warning": {
+        "required": true,
+        "text": "Antagonistic nutrient combinations were identified for PEPPERIDGE FARM (PEPPERIDGE FARM COOKIES): Calcium + Phytate, Calcium + Vitamin B2, Iron + Phytate, Vitamin B12 + Vitamin B9. Check these results with a registered dietitian, together with the quantities involved, before changing the diet or adding supplements.",
+        "pairs": [
+            "Calcium + Phytate",
+            "Calcium + Vitamin B2",
+            "Iron + Phytate",
+            "Vitamin B12 + Vitamin B9"
+        ],
+        "quantities": [
+            "Calcium + Phytate: Calcium: 37 MG (2.9% DV), Phytate: quantity not published",
+            "Calcium + Vitamin B2: Calcium: 37 MG (2.9% DV), Vitamin B2: quantity not published",
+            "Iron + Phytate: Iron: 1.85 MG (10.3% DV), Phytate: quantity not published",
+            "Vitamin B12 + Vitamin B9: Vitamin B12: quantity not published, Vitamin B9: quantity not published"
+        ],
+        "next_steps": [
+            "Review the flagged pairs with a registered dietitian",
+            "Adjust portion sizes and meal timing (for example, separate iron-rich and calcium-rich foods)",
+            "Do not eliminate nutrients; adjust supplement doses only with professional guidance"
+        ]
+    },
+    "basis": "per_100g",
+    "min_dv_percent": 5,
+    "scores": {
+        "synergy": 0,
+        "antagonism": 0,
+        "net": 0,
+        "classification": "unknown"
+    },
+    "counts": {
+        "nutrients_present": 10,
+        "pairs_present": 6,
+        "pairs_active": 4,
+        "synergistic": 0,
+        "antagonistic": 0,
+        "context_dependent": 0,
+        "quantity_unknown": 4,
+        "excluded_additive": 0,
+        "pairs_inactive": 2,
+        "nutrients_neutral": 3
+    },
+    "neutral_nutrients": [
+        "SELENIUM",
+        "VITAMIN_B1",
+        "VITAMIN_B3"
+    ],
+    "notes": [
+        "4 active pair(s) excluded from the score because the measured quantity is unknown (analysis.quantity.unknown.in.score=false)"
+    ],
+    "disclaimer": "Nutrient interactions are reported from published reference charts for informational use only. This is not medical advice and is not a substitute for guidance from a qualified health professional."
+}
