@@ -2,10 +2,13 @@ NOTE:
 
 The food and nutrient data used in this project are publicly available and were downloaded from FoodData Central https://fdc.nal.usda.gov/download-datasets#bkmk-3.
 
-The reference data indicating nutrient conflicts are downloaded from:
+The reference data indicating nutrient conflicts were downloaded from:
 1.  https://www.google.com/search?q=conflicting+nutrients+in+a+brand&rlz=1C1CHBF_enCA855CA855&oq=conflicting+nutrients+in+a+brand&gs_lcrp=EgZjaHJvbWUyBggAEEUYOTIHCAEQIRigATIHCAIQIRiPAjIHCAMQIRiPAtIBCTE1NTUzajBqN6gCALACAA&sourceid=chrome&source=chrome.ob&ie=UTF-8&mstk=AUtExfCx0RLGe2davsLRcv6OjJlwE0oRcUUA6Wkkc6cJ2n2Xqr8LqEqZZNiN6ems77-uY3DsLWQm6oDtgJoe7rJfQGj7GDn-VLB57Vpxxq9MTjPgikE0PaQDns9vXzzRQn4v1ASpUHsocsEkxYeKKZg3Hmy7Q1JjiOYS8ynWwBRamL1mbMbXbJ9XpheCVkzahKehm-g4wNpgka3sC4C2gnMkeeSIU8pLUtOUh57rN15lCs8O48ZihGReTKIDbA&csuir=1&udm=50&aioh=3&mtid=biT0aujHKLCZhvcP0L_EyQc#aof=1
 
 2.  https://deannaminich.com/wp-content/uploads/2018/10/MET2557-Vitamin-Mineral-Interactions-Chart_IPAD.pdf
+
+The project was built for very limited reference data; Can be extended to wider reference data sources when available.
+
 
 # Nutrient Conflicts Evaluation
 
@@ -32,11 +35,11 @@ The same analysis code is exposed through three interfaces:
   **read only**.
 - No database server is required. Redis is optional and disabled by default.
 
-The default paths point at:
+The default paths point to:
 
 ```
-C:/MyPersonalSpace/StudyMaterial/BoostedCode/projects/ds/nutrient-conflicts/brandData
-C:/MyPersonalSpace/StudyMaterial/BoostedCode/projects/ds/nutrient-conflicts/referenceData
+/projects/ds/nutrient-conflicts/brandData
+/projects/ds/nutrient-conflicts/referenceData
 ```
 
 Change `dataset.root` and `reference.source.dir` if your data lives elsewhere.
