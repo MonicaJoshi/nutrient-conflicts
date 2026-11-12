@@ -23,11 +23,11 @@ AGENTS.md and SKILL.md applied in this project:
 
 2 
 	Generic SKILL.md with instructions on py coding style, CLI , GUI and API implementation preferences.
-	path: <path>\.agents\skills\python-development\SKILL.md
+	path: https://github.com/MonicaJoshi/agents-skill/blob/master/.agents/skills/python-development/SKILL.md (branch master)
 	
 
 3
-	Project AGENTS.md with preferences on caching.
-	path: <path>\nutrient-conflicts\AGENTS.md
+	Project AGENTS.md with preferences on caching. 
+	path: https://github.com/MonicaJoshi/nutrient-conflicts/blob/main/AGENTS.md (branch main)
 	
 	
